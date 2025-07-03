@@ -1,99 +1,93 @@
-const parser = require("lambda-multipart-parser");
-const AWS = require("aws-sdk");
+const AWS = require('aws-sdk')
+const parser = require('lambda-multipart-parser')
 
-const awsAccessKey = process.env.aws_access_key;
-const awsSecretKey = process.env.aws_secret_key;
-const s3Bucket = process.env.aws_s3_bucket;
+const awsAccessKey = process.env.AWS_ACCESS_KEY
+const awsSecretKey = process.env.AWS_SECRET_KEY
+const awsEndpoint = process.env.AWS_ENDPOINT || 's3.ap-southeast-1.amazonaws.com'
+const awsS3Bucket = process.env.AWS_S3_BUCKET
 
-const allowedContentType = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-];
-const defaultUploadDirectory = "uploads";
-const limitFileSizeKB = 4096; // 4 MB
+const allowedContentType = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+const defaultUploadDirectory = 'uploads'
+const limitFileSizeKB = 4096 // 4 MB
 
 exports.handler = async (event) => {
   try {
-    const endpoint = new AWS.Endpoint("s3.ap-southeast-1.amazonaws.com"); // AWS S3 endpoint
-
+    const endpoint = new AWS.Endpoint(awsEndpoint)
     const s3 = new AWS.S3({
       endpoint,
       accessKeyId: awsAccessKey,
       secretAccessKey: awsSecretKey,
-    });
+    })
 
-    const request = await parser.parse(event);
-    const file = request?.files?.[0];
+    const request = await parser.parse(event)
+    const file = request?.files?.[0]
 
     if (!file) {
-      throw new Error("No file uploaded");
+      throw new Error('No file uploaded')
     }
 
-    const contentType = file.contentType.toLowerCase();
-    const isInvalidContentType = !allowedContentType.includes(contentType);
-    const fileSizeKB = Math.floor(Buffer.byteLength(file.content) / 1024);
+    const contentType = file.contentType.toLowerCase()
+    const isInvalidContentType = !allowedContentType.includes(contentType)
+    const fileSizeKB = Math.floor(Buffer.byteLength(file.content) / 1024)
 
     if (isInvalidContentType) {
-      throw new Error("Invalid content type");
+      throw new Error('Invalid content type')
     }
 
     if (fileSizeKB > limitFileSizeKB) {
-      throw new Error("File too big");
+      throw new Error('File is too big')
     }
 
-    const userId = request?.user_id || "";
-    const resize = request?.resize !== "false"; // default true
-    const isPublic = request?.is_public !== "false"; // default true
-    const compress = request?.compress === "true"; // default false
-    const directory = request?.directory || "";
-    const prefix = request?.prefix || "";
+    const userId = request?.user_id || ''
+    const resize = request?.resize !== 'false' // default true
+    const isPublic = request?.is_public !== 'false' // default true
+    const compress = request?.compress === 'true' // default false
+    const directory = request?.directory || ''
+    const prefix = request?.prefix || ''
 
-    const uploadDir =
-      defaultUploadDirectory + (directory ? `/${directory}` : "");
-    const fileExtension = file.filename?.split(".").pop() || "jpg";
-    const filename = `${userId ? `${userId}_` : ""}${
-      prefix ? `${prefix}_` : ""
-    }${getRandomNumber()}${getCurrentTimeStamp()}.${fileExtension}`;
-    const objectName = `${uploadDir}/${filename}`;
+    const uploadDir = defaultUploadDirectory + (directory ? `/${directory}` : '')
+    const fileExtension = file.filename?.split('.').pop() || 'jpg'
+    const filename = `${userId ? `${userId}_` : ''}${
+      prefix ? `${prefix}_` : ''
+    }${getRandomNumber()}${getCurrentTimeStamp()}.${fileExtension}`
+    const objectName = `${uploadDir}/${filename}`
 
     const uploadParams = {
-      Bucket: s3Bucket,
+      Bucket: awsS3Bucket,
       Key: objectName,
-      Body: Buffer.from(file.content, "binary"),
+      Body: Buffer.from(file.content, 'binary'),
       ContentType: contentType,
-      ACL: isPublic ? "public-read" : "private",
-    };
+      ACL: isPublic ? 'public-read' : 'private',
+    }
 
-    const result = await s3.upload(uploadParams).promise();
+    const result = await s3.upload(uploadParams).promise()
 
     return sendRes(200, {
       data: objectName,
-      message: "Image Uploaded",
+      message: 'Image Uploaded',
       resized: resize,
       compressed: compress,
       url: result.Location,
-    });
+    })
   } catch (error) {
     return sendRes(500, {
-      message: error.message || "Something went wrong",
-    });
+      message: error.message || 'Something went wrong',
+    })
   }
-};
+}
 
 const getRandomNumber = (min = 100000, max = 999999) => {
-  return Math.floor(Math.random() * (max - min) + min);
-};
+  return Math.floor(Math.random() * (max - min) + min)
+}
 
 const getCurrentTimeStamp = () => {
-  return Date.now();
-};
+  return Date.now()
+}
 
 const sendRes = (statusCode, body) => ({
   statusCode,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   body: JSON.stringify(body),
-});
+})
