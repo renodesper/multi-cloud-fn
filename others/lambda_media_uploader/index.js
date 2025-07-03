@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     const file = request?.files?.[0]
 
     if (!file) {
-      throw new Error('No file uploaded')
+      throw new Error('File is missing')
     }
 
     const contentType = file.contentType.toLowerCase()
@@ -39,9 +39,6 @@ exports.handler = async (event) => {
     }
 
     const userId = request?.user_id || ''
-    const resize = request?.resize !== 'false' // default true
-    const isPublic = request?.is_public !== 'false' // default true
-    const compress = request?.compress === 'true' // default false
     const directory = request?.directory || ''
     const prefix = request?.prefix || ''
 
@@ -51,6 +48,8 @@ exports.handler = async (event) => {
       prefix ? `${prefix}_` : ''
     }${getRandomNumber()}${getCurrentTimeStamp()}.${fileExtension}`
     const objectName = `${uploadDir}/${filename}`
+
+    const isPublic = request?.is_public !== 'false'
 
     const uploadParams = {
       Bucket: awsS3Bucket,
@@ -63,14 +62,16 @@ exports.handler = async (event) => {
     const result = await s3.upload(uploadParams).promise()
 
     return sendRes(200, {
-      data: objectName,
-      message: 'Image Uploaded',
-      resized: resize,
-      compressed: compress,
-      url: result.Location,
+      error: false,
+      message: 'Image uploaded successfully',
+      data: {
+        name: objectName,
+        url: result.Location,
+      },
     })
   } catch (error) {
     return sendRes(500, {
+      error: true,
       message: error.message || 'Something went wrong',
     })
   }
