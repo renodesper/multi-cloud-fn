@@ -1,0 +1,8 @@
+name = "cloudflare-worker"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+API_URL = "example.com"
+ENDPOINT = "/webhook"
+API_KEY = "secret"

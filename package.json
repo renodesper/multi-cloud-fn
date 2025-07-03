@@ -1,0 +1,12 @@
+{
+  "name": "multi-cloud-fn",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "turbo": "^1.10.0"
+  }
+}
